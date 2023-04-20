@@ -1147,6 +1147,10 @@ type
     function GetDescription: string; override;
   end;
 
+  TZMariaDBPlainDriver = class(TZMySQLPlainDriver)
+  public
+    function GetProtocol: string; override;
+  end;
 {$ENDIF ZEOS_DISABLE_MYSQL}
 
 implementation
@@ -1406,6 +1410,7 @@ begin
   FLoader.AddLocation(LINUX_DLL57_LOCATION);
   FLoader.AddLocation(LINUX_DLL57_LOCATION_EMBEDDED);
   FLoader.AddLocation(LINUX_DLL58_LOCATION);
+  FLoader.AddLocation(LINUX_DLL58_LOCATION_EMBEDDED);
 {$ENDIF}
   LoadCodePages;
 end;
@@ -1423,6 +1428,13 @@ end;
 function TZMySQLPlainDriver.IsMariaDBDriver: Boolean;
 begin
   Result := FIsMariaDBDriver;
+end;
+
+  { TZMariaDBPlainDriver }
+
+function TZMariaDBPlainDriver.GetProtocol: string;
+begin
+  Result := 'mariadb';
 end;
 
 {$ENDIF ZEOS_DISABLE_MYSQL}

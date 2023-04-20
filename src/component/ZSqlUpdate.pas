@@ -421,7 +421,10 @@ begin
   if Assigned(FTransaction) then
     Result := FTransaction
   else
-    Result := FConnection.GetConnectionTransaction;
+    if Assigned(FConnection) then
+      Result := FConnection.GetConnectionTransaction
+    else
+      raise EZSQLException.Create('No transaction was found!');
 end;
 
 procedure TZUpdateSQL.SetRefreshSQL(Value: TStrings);
@@ -885,18 +888,14 @@ var
   ADataSet: TZAbstractRWTxnUpdateObjDataSet;
 
   function SomethingChanged: Boolean;
-  var I, J: Integer;
+  var J: Integer;
   begin
     Result := False;
-    J := 0;
-    for I := 0 to DataSet.Fields.Count -1 do
-      if DataSet.Fields[I].FieldKind = fkData then begin
-        if OldRowAccessor.CompareBuffer(OldRowAccessor.RowBuffer,
-           NewRowAccessor.RowBuffer, J+FirstDbcIndex, NewRowAccessor.GetCompareFunc(J+FirstDbcIndex, ckEquals))  <> 0 then begin
-          Result := True;
-          Break;
-        end;
-        Inc(J);
+    for J := 0 to TZAbstractRODataSet(DataSet).DbcResultSet.GetcolumnCount -1 do
+      if OldRowAccessor.CompareBuffer(OldRowAccessor.RowBuffer,
+        NewRowAccessor.RowBuffer, J+FirstDbcIndex, NewRowAccessor.GetCompareFunc(J+FirstDbcIndex, ckEquals))  <> 0 then begin
+        Result := True;
+        Break;
       end;
   end;
   {$IFDEF WITH_VALIDATE_UPDATE_COUNT}

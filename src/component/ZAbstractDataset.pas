@@ -249,6 +249,8 @@ type
     function CreateResultSet(const SQL: string; MaxRows: Integer):
       IZResultSet; override;
     function InheritsFromReadWriteTransactionUpdateObjectDataSet: Boolean; override;
+    procedure InternalOpen; override;
+    procedure FixupUpdateObject;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -368,13 +370,19 @@ begin
 end;
 
 procedure TZAbstractRWDataSet.InternalOpen;
-var Value: String;
+{$IF DECLARED(DSProps_InsertReturningFields)}
+var
+  Value: String;
+{$IFEND}
 begin
+  {$IF DECLARED(DSProps_InsertReturningFields)}
   if doCheckRequired in Options then begin
     Value := Properties.Values[DSProps_InsertReturningFields];
     if Value <> '' then
       FInsertReturningFields := ExtractFields(Value, [';', ',']);
   end;
+  {$IFEND}
+
   inherited InternalOpen;
 end;
 
@@ -1173,10 +1181,7 @@ begin
       FGenDMLResolver := nil;
     if Active and (CachedResultSet <> nil) then
       if FUpdateObject <> nil then begin
-        { get a local interface of the component }
-        FUpdateObject.GetInterface(IZCachedResolver, TempResolver);
-        CachedResultSet.SetResolver(TempResolver);
-        SetTxns2Resolver(TempResolver);
+        FixupUpdateObject;
       end else begin
         {EH: now test if the old FUpdateObject intf equals with current cached resolver }
         if FCachedResolver = TempResolver then
@@ -1190,6 +1195,27 @@ begin
         SetTxns2Resolver(FCachedResolver);
       end;
   end;
+end;
+
+procedure TZAbstractRWTxnUpdateObjDataSet.FixupUpdateObject;
+var TempResolver: IZCachedResolver; //need a temporay interface to compare the resolvers
+begin
+  if FUpdateObject <> nil then begin
+    { get a local interface of the component }
+    FUpdateObject.GetInterface(IZCachedResolver, TempResolver);
+    CachedResultSet.SetResolver(TempResolver);
+    SetTxns2Resolver(TempResolver);
+    if Assigned(FTransaction) then
+      TempResolver.SetTransaction(HackTZAbstractTransaction(FTransaction).GetIZTransaction)
+    else
+      TempResolver.SetConnection(FConnection.DbcConnection);
+  end;
+end;
+
+procedure TZAbstractRWTxnUpdateObjDataSet.InternalOpen;
+begin
+  inherited;
+  FixupUpdateObject;
 end;
 
 end.
